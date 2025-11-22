@@ -35,6 +35,20 @@ The template repository from https://github.com/AndresNinou/template has been au
 
 GitHub PAT is already set in the environment GITHUB_PAT.
 
+CRITICAL - IFRAME EMBEDDING CONFIGURATION:
+Before starting the dev server, you MUST configure vite.config.js to allow iframe embedding.
+Ensure the server configuration includes these headers:
+
+server: {
+  host: true,
+  allowedHosts: true,
+  headers: {
+    'X-Frame-Options': 'ALLOWALL',
+    'Content-Security-Policy': 'frame-ancestors *'
+  }
+}
+
+This is CRITICAL for the preview to work in the frontend interface.
 
 1. Always Start dev server in the background dont need to block the terminal and if is automatically, before making any code  changes run the server first thats your first TASK IN LIFE RUN THE FUCKING SERVER.
    cd my-app && nohup pnpm dev --host --port 5173 > vite.log 2>&1 &
@@ -61,31 +75,10 @@ def get_mcp_config() -> Dict[str, Any]:
     mcp_config = {}
     
     # Context7 MCP
-    if os.getenv("CONTEXT7_API_KEY"):
-        mcp_config["context7"] = {
-            "apiKey": os.getenv("CONTEXT7_API_KEY"),
+    if os.getenv("GITHUB_PAT"):
+        mcp_config["githubOfficial"] = {
+            "personalAccessToken": os.getenv("GITHUB_PAT"),
         }
-    
-    # Exa MCP
-    if os.getenv("EXA_API_KEY"):
-        mcp_config["exa"] = {
-            "apiKey": os.getenv("EXA_API_KEY"),
-        }
-    
-    # Browserbase MCP (requires multiple keys)
-    if os.getenv("BROWSERBASE_API_KEY") and os.getenv("GEMINI_API_KEY") and os.getenv("BROWSERBASE_PROJECT_ID"):
-        mcp_config["browserbase"] = {
-            "apiKey": os.getenv("BROWSERBASE_API_KEY"),
-            "geminiApiKey": os.getenv("GEMINI_API_KEY"),
-            "projectId": os.getenv("BROWSERBASE_PROJECT_ID"),
-        }
-    
-    # Airtable MCP
-    if os.getenv("AIRTABLE_API_KEY"):
-        mcp_config["airtable"] = {
-            "airtableApiKey": os.getenv("AIRTABLE_API_KEY"),
-        }
-    
     return mcp_config
 
 
@@ -126,14 +119,7 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                         },
                     )
                 else:
-                    sandbox = await AsyncSandbox.create(
-                        template=sandbox_template,
-                        timeout=sandbox_timeout,
-                        envs={
-                            "GITHUB_PAT": os.getenv("GITHUB_PAT", ""),
-                            "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
-                        },
-                    )
+                    raise HTTPException(status_code=400, detail="No MCP configuration provided")
                 
                 yield f"data: {json.dumps({'type': 'status', 'status': 'sandbox_ready', 'sandbox_id': sandbox.sandbox_id})}\n\n"
                 

@@ -282,6 +282,10 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                     clearInterval(refreshIntervalRef.current);
                     refreshIntervalRef.current = null;
                   }
+                  
+                  // Force one final iframe refresh to load the completed app
+                  console.log('[LovableBuilder] 🔄 Forcing final iframe refresh after build complete');
+                  setIframeKey(prev => prev + 1);
                   setIsPreviewLoading(false);
                   
                   onBuildComplete(completeSandboxId);
@@ -444,14 +448,27 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
           <div className="panel-header">
             <h3>Live Preview</h3>
             {previewUrl && (
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="open-button"
-              >
-                Open in New Tab
-              </a>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="open-button"
+                  onClick={() => {
+                    console.log('[LovableBuilder] 🔄 Manual refresh triggered');
+                    setIframeKey(prev => prev + 1);
+                  }}
+                  title="Refresh preview"
+                >
+                  🔄 Refresh
+                </button>
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="open-button"
+                >
+                  Open in New Tab
+                </a>
+              </div>
             )}
           </div>
           <div className="preview-content">
