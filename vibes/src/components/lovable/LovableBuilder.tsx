@@ -143,13 +143,48 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                 if (message.type === 'status') {
                   messageCount++;
                   console.log(`[LovableBuilder] 📨 Status #${messageCount}:`, message.status);
-                  
-                  // Only show key status messages
-                  const importantStatuses = ['sandbox_ready', 'template_ready', 'executing'];
-                  if (importantStatuses.includes(message.status)) {
+
+                  // Router-specific status messages
+                  const routerStatuses: Record<string, string> = {
+                    'installing_router': '🔧 Installing Claude Code Router...',
+                    'trying_install_method_1': '📦 Trying installation method 1...',
+                    'trying_install_method_2': '📦 Trying installation method 2...',
+                    'trying_install_method_3': '📦 Trying installation method 3...',
+                    'router_installed': '✅ Router installed successfully',
+                    'router_configured': '✅ Router configured with Groq',
+                    'starting_router': '🚀 Starting Claude Code Router...',
+                    'verifying_router': '🔍 Verifying router status...',
+                    'router_started': '✅ Router running on port 3456',
+                  };
+
+                  // Check if it's a router status
+                  if (message.status && routerStatuses[message.status]) {
                     const buildMessage: BuildMessage = {
                       type: 'progress',
-                      content: `⏳ ${message.status.replace(/_/g, ' ')}`,
+                      content: routerStatuses[message.status],
+                      timestamp: Date.now(),
+                    };
+                    setMessages(prev => [...prev, buildMessage]);
+                    continue;
+                  }
+
+                  // Only show other key status messages
+                  const importantStatuses = ['sandbox_ready', 'template_ready', 'executing'];
+                  if (importantStatuses.includes(message.status)) {
+                    let statusContent = `⏳ ${message.status.replace(/_/g, ' ')}`;
+
+                    // Special message for executing status
+                    if (message.status === 'executing') {
+                      statusContent = '🤖 Claude is now building your application...';
+                      console.log('[LovableBuilder] 🤖 ========================================');
+                      console.log('[LovableBuilder] 🤖 Claude Code execution started!');
+                      console.log('[LovableBuilder] 🤖 Using Groq AI for faster inference');
+                      console.log('[LovableBuilder] 🤖 ========================================');
+                    }
+
+                    const buildMessage: BuildMessage = {
+                      type: 'progress',
+                      content: statusContent,
                       timestamp: Date.now(),
                     };
                     setMessages(prev => [...prev, buildMessage]);
@@ -158,13 +193,37 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                 } else if (message.type === 'mcp_configured') {
                   messageCount++;
                   console.log(`[LovableBuilder] 📨 MCP configured:`, message.mcp_enabled);
-                  
+
                   const buildMessage: BuildMessage = {
                     type: 'progress',
                     content: `✅ MCP Tools enabled: ${message.mcp_enabled.join(', ')}`,
                     timestamp: Date.now(),
                   };
                   setMessages(prev => [...prev, buildMessage]);
+                  continue;
+                } else if (message.type === 'router_ready') {
+                  messageCount++;
+                  console.log(`[LovableBuilder] 📨 Router ready:`, message.router_status);
+
+                  const routerStatus = message.router_status;
+                  const statusEmoji = routerStatus.started ? '✅' : '⚠️';
+                  const method = routerStatus.install_method || 'unknown';
+
+                  const buildMessage: BuildMessage = {
+                    type: 'progress',
+                    content: `${statusEmoji} Claude Code Router ready (using Groq via ${method})`,
+                    timestamp: Date.now(),
+                  };
+                  setMessages(prev => [...prev, buildMessage]);
+
+                  // Log router details
+                  console.log(`[LovableBuilder] 🔧 Router details:`, {
+                    installed: routerStatus.installed,
+                    configured: routerStatus.configured,
+                    started: routerStatus.started,
+                    method: method,
+                    url: routerStatus.url
+                  });
                   continue;
                 } else if (message.type === 'ports') {
                   messageCount++;
@@ -297,12 +356,12 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                     setSessionId(message.session_id);
                     completeSandboxId = message.session_id;
                   }
-                  
+
                   // Extract preview URL from exposed_urls
                   if (message.exposed_urls) {
                     const vitePort = '5173';
                     const reactPort = '3000';
-                    
+
                     if (message.exposed_urls[vitePort]) {
                       setPreviewUrl(message.exposed_urls[vitePort]);
                       console.log('[LovableBuilder] 📦 Preview URL (Vite):', message.exposed_urls[vitePort]);
@@ -311,10 +370,22 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                       console.log('[LovableBuilder] 📦 Preview URL (React):', message.exposed_urls[reactPort]);
                     }
                   }
-                  
+
+                  // Log router status if present
+                  if (message.router_status) {
+                    console.log('[LovableBuilder] 🔧 Final router status:', message.router_status);
+                    console.log('[LovableBuilder] 🤖 Using Groq:', message.using_groq);
+                  }
+
+                  // Add completion message with router info
+                  let completionContent = 'Build completed successfully!';
+                  if (message.using_groq) {
+                    completionContent += ' (Powered by Groq AI)';
+                  }
+
                   const buildMessage: BuildMessage = {
                     type: 'complete',
-                    content: 'Build completed successfully!',
+                    content: completionContent,
                     timestamp: Date.now(),
                   };
                   setMessages(prev => [...prev, buildMessage]);
