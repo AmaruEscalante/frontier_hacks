@@ -36,7 +36,7 @@ The template repository from https://github.com/AndresNinou/template has been au
 GitHub PAT is already set in the environment GITHUB_PAT.
 
 
-1. Always Start dev server in the background dont need to block the terminal and if is automatically reloaded on file changes:
+1. Always Start dev server in the background dont need to block the terminal and if is automatically, before making any code  changes run the server first thats your first TASK IN LIFE RUN THE FUCKING SERVER.
    cd my-app && nohup pnpm dev --host --port 5173 > vite.log 2>&1 &
 
 4. Verify it's running:
