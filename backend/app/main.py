@@ -31,24 +31,9 @@ app.add_middleware(
 
 system_prompt = """
 WORKING DIRECTORY:
-The template repository from https://github.com/AndresNinou/template has been automatically cloned to `/home/user/template` with all dependencies installed via `pnpm install`. This is your default working directory for this session.
+The template repository from https://github.com/AmaruEscalante/template has been automatically cloned to `/home/user/template` with all dependencies installed via `pnpm install`. This is your default working directory for this session.
 
 GitHub PAT is already set in the environment GITHUB_PAT.
-
-CRITICAL - IFRAME EMBEDDING CONFIGURATION:
-Before starting the dev server, you MUST configure vite.config.js to allow iframe embedding.
-Ensure the server configuration includes these headers:
-
-server: {
-  host: true,
-  allowedHosts: true,
-  headers: {
-    'X-Frame-Options': 'ALLOWALL',
-    'Content-Security-Policy': 'frame-ancestors *'
-  }
-}
-
-This is CRITICAL for the preview to work in the frontend interface.
 
 1. Always Start dev server in the background dont need to block the terminal and if is automatically, before making any code  changes run the server first thats your first TASK IN LIFE RUN THE FUCKING SERVER.
    cd my-app && nohup pnpm dev --host --port 5173 > vite.log 2>&1 &
@@ -128,7 +113,7 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                 
                 # Clone template repo
                 await sandbox.commands.run(
-                    "git clone https://github.com/AndresNinou/template /home/user/template"
+                    "git clone https://github.com/AmaruEscalante/template /home/user/template"
                 )
                 
                 # Remove .git directory to make it a fresh template (not a git clone)
