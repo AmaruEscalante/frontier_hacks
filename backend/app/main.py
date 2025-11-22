@@ -514,11 +514,11 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                     pass
 
             # Write combined prompt to file to avoid shell escaping issues
-            log("Chat", "📝 Writing combined prompt to /tmp/claude_prompt.txt")
-            await sandbox.files.write("/tmp/claude_prompt.txt", combined_prompt)
+            log("Chat", "📝 Writing combined prompt to /home/user/claude_prompt.txt")
+            await sandbox.files.write("/home/user/claude_prompt.txt", combined_prompt)
 
             # Verify the file was written correctly
-            verify_result = await sandbox.commands.run("wc -l /tmp/claude_prompt.txt")
+            verify_result = await sandbox.commands.run("wc -l /home/user/claude_prompt.txt")
             log("Chat", f"📝 Prompt file written: {verify_result.stdout.strip()}")
 
             # Verify we're in the right directory
@@ -544,7 +544,7 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             log("Chat", f"🔍 Router accessibility test: {router_test.stdout[:200]}")
 
             # Build full command - simpler without system prompt in args
-            full_command = f"cd /home/user/template && cat /tmp/claude_prompt.txt | {cmd} {' '.join(claude_args)}"
+            full_command = f"cd /home/user/template && cat /home/user/claude_prompt.txt | {cmd} {' '.join(claude_args)}"
             log("Chat", f"🤖 Executing Claude command in /home/user/template")
             log("Chat", f"Command args: {' '.join(claude_args)}")
             log("Chat", f"Full command: {full_command[:200]}...")
