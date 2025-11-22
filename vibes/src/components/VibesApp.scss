@@ -1,0 +1,331 @@
+.vibes-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 2rem;
+  padding-bottom: 1rem;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+}
+
+.vibes-header {
+  text-align: center;
+  position: relative;
+  z-index: 3;
+}
+
+/* NEON TITLE - CYBERPUNK 2077 × BLADE RUNNER 2049 */
+.vibes-title {
+  font-size: 4.5rem;
+  font-weight: 700;
+  background: linear-gradient(
+    90deg,
+    #FF8C00 0%,
+    #00D9FF 50%,
+    #FF006E 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+  position: relative;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  animation: title-glitch 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.6))
+          drop-shadow(0 0 40px rgba(255, 140, 0, 0.4))
+          drop-shadow(0 0 60px rgba(255, 0, 110, 0.3));
+
+  .icon {
+    display: inline-block;
+    margin-right: 1rem;
+    filter: drop-shadow(0 0 15px rgba(0, 217, 255, 1));
+  }
+}
+
+/* HOLOGRAM FLICKER */
+@keyframes title-glitch {
+  0%, 90%, 100% {
+    opacity: 1;
+    text-shadow: 
+      0 0 10px rgba(0, 217, 255, 0.8),
+      0 0 20px rgba(255, 140, 0, 0.6),
+      0 0 30px rgba(255, 0, 110, 0.4),
+      2px 2px 0px rgba(0, 217, 255, 0.3),
+      -2px -2px 0px rgba(255, 0, 110, 0.3);
+  }
+  92%, 94%, 96% {
+    opacity: 0.8;
+    text-shadow: 
+      0 0 15px rgba(0, 217, 255, 1),
+      0 0 25px rgba(255, 140, 0, 0.8),
+      5px 0 0px rgba(0, 217, 255, 0.5),
+      -5px 0 0px rgba(255, 0, 110, 0.5);
+  }
+}
+
+.vibes-subtitle {
+  font-size: 1.4rem;
+  color: #a0a0c0;
+  font-weight: 300;
+  text-shadow: 0 0 10px rgba(160, 160, 192, 0.3);
+  letter-spacing: 0.1em;
+}
+
+.vibes-instructions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+/* FROSTED GLASS HOLOGRAPHIC CARDS */
+.instruction-card {
+  background: 
+    linear-gradient(135deg, 
+      rgba(0, 217, 255, 0.05) 0%,
+      rgba(255, 140, 0, 0.02) 50%,
+      rgba(255, 0, 110, 0.05) 100%
+    );
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 0px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 15px) 0,
+    100% 15px,
+    100% 100%,
+    0 100%
+  );
+  box-shadow: 
+    0 0 20px rgba(0, 217, 255, 0.1),
+    inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* SHIMMER EFFECT */
+.instruction-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 217, 255, 0.1) 50%,
+    transparent 70%
+  );
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+/* EDGE GLOW ON HOVER */
+.instruction-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-image: linear-gradient(
+    135deg,
+    rgba(0, 217, 255, 0.8),
+    rgba(255, 140, 0, 0.6),
+    rgba(255, 0, 110, 0.8)
+  );
+  border-image-slice: 1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.instruction-card:hover {
+  background: 
+    linear-gradient(135deg, 
+      rgba(0, 217, 255, 0.15) 0%,
+      rgba(255, 140, 0, 0.08) 50%,
+      rgba(255, 0, 110, 0.15) 100%
+    );
+  transform: translateY(-5px) translateZ(20px);
+  box-shadow: 
+    0 0 40px rgba(0, 217, 255, 0.4),
+    0 0 80px rgba(255, 140, 0, 0.2),
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 40px rgba(0, 217, 255, 0.1);
+}
+
+.instruction-card:hover::after {
+  opacity: 1;
+}
+
+/* NEON NUMBER BADGE */
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 0%;
+  background: 
+    linear-gradient(135deg, 
+      rgba(0, 217, 255, 0.2) 0%, 
+      rgba(255, 140, 0, 0.3) 100%
+    );
+  border: 2px solid #00D9FF;
+  color: #00F0FF;
+  font-weight: 700;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 
+    0 0 20px rgba(0, 217, 255, 0.6),
+    0 0 40px rgba(255, 140, 0, 0.3),
+    inset 0 0 20px rgba(0, 217, 255, 0.2);
+  text-shadow: 
+    0 0 10px rgba(0, 217, 255, 1),
+    0 0 20px rgba(0, 217, 255, 0.8);
+}
+
+/* GLITCH EFFECT ON NUMBER */
+.step-number::before {
+  content: attr(data-number);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: glitch-number 4s linear infinite;
+  color: #FF006E;
+}
+
+@keyframes glitch-number {
+  0%, 90%, 100% {
+    opacity: 0;
+  }
+  92% {
+    opacity: 0.7;
+    transform: translate(-2px, 1px);
+  }
+  94% {
+    opacity: 0;
+    transform: translate(2px, -1px);
+  }
+  96% {
+    opacity: 0.6;
+    transform: translate(-1px, -1px);
+  }
+}
+
+.step-text {
+  font-size: 1.05rem;
+  color: #e0e0f0;
+  line-height: 1.5;
+  text-shadow: 0 0 5px rgba(224, 224, 240, 0.1);
+  letter-spacing: 0.02em;
+}
+
+/* FLOATING PARTICLES EFFECT */
+.vibes-app::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle, rgba(0, 217, 255, 0.3) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 140, 0, 0.2) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 0, 110, 0.2) 1px, transparent 1px);
+  background-size: 
+    50px 50px,
+    80px 80px,
+    120px 120px;
+  background-position: 
+    0 0,
+    20px 20px,
+    40px 40px;
+  animation: particles-float 60s linear infinite;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes particles-float {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  100% {
+    transform: translateY(-100px) translateX(50px);
+  }
+}
+
+@media (max-width: 1200px) {
+  .vibes-instructions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vibes-title {
+    font-size: 3.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .vibes-app {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .vibes-title {
+    font-size: 2.5rem;
+  }
+
+  .vibes-subtitle {
+    font-size: 1rem;
+  }
+
+  .vibes-instructions {
+    grid-template-columns: 1fr;
+  }
+
+  .instruction-card {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      0 100%
+    );
+  }
+
+  .step-number {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+  }
+}
