@@ -1,0 +1,26 @@
+{
+    "LOG": true,
+    "LOG_LEVEL": "debug",
+    "NON_INTERACTIVE_MODE": true,
+    "HOST": "127.0.0.1",
+    "API_TIMEOUT_MS": 300000,
+    "Providers": [
+        {
+            "name": "groq",
+            "api_base_url": "https://api.groq.com/openai/v1/chat/completions",
+            "api_key": "$GROQ_API_KEY",
+            "models": [
+                "moonshotai/kimi-k2-instruct-0905"
+            ],
+            "transformer": {
+                "use": ["groq"],
+                "request": {
+                    "max_tokens": 8192
+                }
+            }
+        }
+    ],
+    "Router": {
+        "default": "groq,moonshotai/kimi-k2-instruct-0905"
+    }
+}

@@ -423,10 +423,10 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                 yield f"data: {json.dumps({'type': 'ports', 'exposed_urls': exposed_ports})}\n\n"
 
             # Execute Claude Code with REALTIME streaming using stream-json
-            log("Chat", "🤖 Preparing to execute Claude Code")
+            log("Chat", "🤖 Preparing to execute Claude Code via Router")
             yield f"data: {json.dumps({'type': 'status', 'status': 'executing'})}\n\n"
-            
-            cmd = "claude"
+
+            cmd = "ccr code"
 
             # Combine system prompt and user prompt to avoid shell escaping issues
             # This ensures all context is passed via stdin without command-line complexity
@@ -434,13 +434,14 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             log("Chat", f"📝 Combined prompt length: {len(combined_prompt)} characters")
 
             # Use stream-json format for realtime streaming
+            # Note: When piping from stdin, Claude auto-detects print mode
+            # stream-json in print mode requires --verbose
             claude_args = [
-                "-p",
                 "--dangerously-skip-permissions",
                 "--output-format",
                 "stream-json",  # Stream JSON events in realtime
                 "--include-partial-messages",  # Include partial updates
-                "--verbose",  # Required for stream-json in print mode
+                "--verbose",  # Required for stream-json when using stdin
             ]
             if session:
                 claude_args.append(f"--resume")
@@ -449,8 +450,12 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             # Parse stream-json events in realtime
             all_events = []
             output_queue = asyncio.Queue()
+            captured_stderr = []
+            captured_stdout = []
 
             def on_stdout(line: str):
+                # Capture for error reporting
+                captured_stdout.append(line)
                 """Parse stream-json events and extract text deltas"""
                 try:
                     event = json.loads(line)
@@ -500,6 +505,8 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                     })
 
             def on_stderr(line: str):
+                # Capture for error reporting
+                captured_stderr.append(line)
                 # Queue stderr for streaming
                 try:
                     output_queue.put_nowait({'type': 'stderr', 'data': line})
@@ -522,26 +529,25 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             claude_check = await sandbox.commands.run("which claude && claude --version")
             log("Chat", f"🔍 Claude check: {claude_check.stdout.strip() if claude_check.exit_code == 0 else 'Claude not found!'}")
 
+            # Test if Claude can execute at all
+            simple_test = await sandbox.commands.run('echo "test" | claude --help', timeout=10000)
+            log("Chat", f"🔍 Claude help test exit code: {simple_test.exit_code}")
+            if simple_test.exit_code != 0:
+                log("Chat", f"⚠️  Claude help failed: {simple_test.stderr[:200]}")
+
             # Check environment variables
             env_check = await sandbox.commands.run("env | grep -E '(ANTHROPIC|GROQ)' | head -5")
             log("Chat", f"🔑 Environment variables: {env_check.stdout[:200]}")
+
+            # Verify router is accessible from within sandbox
+            router_test = await sandbox.commands.run("curl -s http://localhost:3456/health || echo 'Router not accessible'", timeout=5000)
+            log("Chat", f"🔍 Router accessibility test: {router_test.stdout[:200]}")
 
             # Build full command - simpler without system prompt in args
             full_command = f"cd /home/user/template && cat /tmp/claude_prompt.txt | {cmd} {' '.join(claude_args)}"
             log("Chat", f"🤖 Executing Claude command in /home/user/template")
             log("Chat", f"Command args: {' '.join(claude_args)}")
             log("Chat", f"Full command: {full_command[:200]}...")
-
-            # Test the command first without streaming to see actual errors
-            log("Chat", "🧪 Testing command without streaming first...")
-            test_result = await sandbox.commands.run(full_command, timeout=10000)
-            log("Chat", f"🧪 Test exit code: {test_result.exit_code}")
-            if test_result.exit_code != 0:
-                log("Chat", f"🧪 Test stderr: {test_result.stderr[:500]}")
-                log("Chat", f"🧪 Test stdout: {test_result.stdout[:500]}")
-                raise Exception(f"Claude command test failed: {test_result.stderr or test_result.stdout}")
-
-            log("Chat", "✅ Test passed, proceeding with streaming execution...")
 
             # Run command in background task - ensure we're in the template directory
             command_task = asyncio.create_task(
@@ -575,8 +581,11 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             # Log any errors
             if response.exit_code != 0:
                 log("Chat", f"❌ Command failed with exit code {response.exit_code}")
-                log("Chat", f"Stderr: {response.stderr if response.stderr else '(empty)'}")
-                log("Chat", f"Stdout: {response.stdout[:500] if response.stdout else '(empty)'}")
+                # Use captured output since callbacks consumed the streams
+                stderr_text = '\n'.join(captured_stderr) if captured_stderr else response.stderr or '(empty)'
+                stdout_text = '\n'.join(captured_stdout[:10]) if captured_stdout else response.stdout or '(empty)'  # First 10 lines
+                log("Chat", f"Captured stderr ({len(captured_stderr)} lines): {stderr_text[:500]}")
+                log("Chat", f"Captured stdout ({len(captured_stdout)} lines): {stdout_text[:500]}")
 
             # Extract session_id from collected events
             result_session_id = None
