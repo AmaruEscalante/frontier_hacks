@@ -42,7 +42,6 @@ async def lifespan(app: FastAPI):
 
     # Check environment variables
     api_keys = {
-        "GROQ_API_KEY": bool(os.getenv("GROQ_API_KEY")),
         "ANTHROPIC_API_KEY": bool(os.getenv("ANTHROPIC_API_KEY")),
         "E2B_API_KEY": bool(os.getenv("E2B_API_KEY")),
         "GITHUB_PAT": bool(os.getenv("GITHUB_PAT")),
@@ -129,152 +128,6 @@ def get_mcp_config() -> Dict[str, Any]:
     return mcp_config
 
 
-async def setup_claude_code_router(sandbox, event_queue) -> Dict[str, Any]:
-    """
-    Install and configure Claude Code Router in the E2B sandbox.
-    Returns status information about the router setup.
-    """
-    log_separator()
-    log("Router", "🔧 Starting Claude Code Router setup")
-    router_status = {"installed": False, "configured": False, "started": False, "url": "http://localhost:3456"}
-
-    try:
-        # Send status update
-        log("Router", "📦 Installing router package...")
-        await event_queue.put({"type": "status", "status": "installing_router"})
-
-        # Try multiple installation methods
-        install_methods = [
-            # Method 1: Try with sudo
-            "sudo npm install -g @musistudio/claude-code-router",
-            # Method 2: Try without sudo (might be running as root)
-            "npm install -g @musistudio/claude-code-router",
-            # Method 3: Use bunx (E2B uses bun)
-            "bun add -g @musistudio/claude-code-router",
-        ]
-
-        install_success = False
-        errors = []
-
-        for i, method in enumerate(install_methods, 1):
-            log("Router", f"📦 Trying installation method {i}/3: {method}")
-            await event_queue.put({"type": "status", "status": f"trying_install_method_{i}", "method": method})
-            result = await sandbox.commands.run(method, timeout=120000)
-
-            if result.exit_code == 0:
-                install_success = True
-                router_status["installed"] = True
-                router_status["install_method"] = method
-                log("Router", f"✅ Installation successful with method: {method}")
-                await event_queue.put({"type": "status", "status": "router_installed", "method": method})
-                break
-            else:
-                error_msg = result.stderr or result.stdout
-                errors.append(f"Method {i} ({method}): {error_msg[:200]}")
-                log("Router", f"❌ Method {i} failed: {error_msg[:200]}")
-
-        if not install_success:
-            full_error = " | ".join(errors)
-            log("Router", f"❌ All installation methods failed: {full_error}")
-            raise Exception(f"Failed to install router with all methods: {full_error}")
-
-        # Create router config directory
-        log("Router", "📝 Creating router config directory")
-        await sandbox.commands.run("mkdir -p /home/user/.claude-code-router")
-
-        # Read and prepare router config with environment variable injection
-        log("Router", "📝 Loading router configuration template")
-        router_config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "template", "router-config.json")
-        with open(router_config_path, "r") as f:
-            router_config = f.read()
-
-        # Replace environment variable placeholder with actual value
-        groq_api_key = os.getenv("GROQ_API_KEY", "")
-        has_api_key = bool(groq_api_key)
-        log("Router", f"🔑 Injecting GROQ_API_KEY: {'✓' if has_api_key else '✗'}")
-        router_config = router_config.replace("$GROQ_API_KEY", groq_api_key)
-
-        # Write config to sandbox
-        log("Router", "📝 Writing config to /home/user/.claude-code-router/config.json")
-        config_preview = router_config[:200] + "..." if len(router_config) > 200 else router_config
-        log("Router", f"Config preview: {config_preview}")
-        await sandbox.files.write("/home/user/.claude-code-router/config.json", router_config)
-        router_status["configured"] = True
-        log("Router", "✅ Router configuration complete")
-        await event_queue.put({"type": "status", "status": "router_configured"})
-
-        # Start Claude Code Router in background
-        log("Router", "🚀 Starting Claude Code Router...")
-        await event_queue.put({"type": "status", "status": "starting_router"})
-
-        # Determine the router command based on installation method
-        if "bun" in router_status.get("install_method", ""):
-            router_cmd = "bunx @musistudio/claude-code-router start"
-        else:
-            router_cmd = "ccr start"
-
-        log("Router", f"🚀 Router command: {router_cmd}")
-
-        # Start router and wait a bit for it to initialize
-        start_result = await sandbox.commands.run(
-            f"nohup {router_cmd} > /tmp/router.log 2>&1 &",
-            timeout=10000
-        )
-
-        # If start command failed, try alternative
-        if start_result.exit_code != 0:
-            log("Router", f"⚠️  Primary start command failed, trying npx fallback")
-            # Try with npx as fallback
-            await sandbox.commands.run(
-                "nohup npx @musistudio/claude-code-router start > /tmp/router.log 2>&1 &",
-                timeout=10000
-            )
-
-        # Give router time to start
-        log("Router", "⏳ Waiting 3 seconds for router to initialize...")
-        await asyncio.sleep(3)
-
-        # Verify router is running by checking if port is listening
-        log("Router", "🔍 Verifying router is running on port 3456...")
-        await event_queue.put({"type": "status", "status": "verifying_router"})
-
-        port_check = await sandbox.commands.run(
-            "netstat -tuln | grep :3456 || ss -tuln | grep :3456",
-            timeout=5000
-        )
-
-        if port_check.exit_code == 0:
-            router_status["started"] = True
-            log("Router", "✅ Router is running on port 3456")
-            log("Router", f"Port check output: {port_check.stdout[:200]}")
-            await event_queue.put({"type": "status", "status": "router_started", "port": 3456})
-        else:
-            # Check router logs for debugging
-            log("Router", "⚠️  Port check failed, examining logs...")
-            logs = await sandbox.commands.run("cat /tmp/router.log 2>/dev/null || echo 'No logs available'")
-            router_log_content = logs.stdout[:500] if logs.stdout else "No output"
-            log("Router", f"Router logs: {router_log_content}")
-            await event_queue.put({
-                "type": "warning",
-                "message": f"Router may not be running on port 3456. Logs: {router_log_content}"
-            })
-            # Mark as started anyway - it might work
-            router_status["started"] = True
-            router_status["warning"] = "Port check failed but continuing"
-            log("Router", "⚠️  Continuing anyway - router might still work")
-
-        log_separator()
-        log("Router", "✅ Router setup complete!", router_status)
-        return router_status
-
-    except Exception as e:
-        router_status["error"] = str(e)
-        log("Router", f"❌ Router setup failed: {str(e)}")
-        log_separator()
-        await event_queue.put({"type": "error", "message": f"Router setup failed: {str(e)}"})
-        raise
-
-
 class ClaudePrompt(BaseModel):
     prompt: str
     repo: Optional[str] = None
@@ -289,7 +142,6 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
     """
     async def event_generator():
         sandbox = None
-        router_status = None
         try:
             log_separator()
             log("Chat", "🚀 New chat request received")
@@ -317,10 +169,7 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                         mcp=mcp_config,
                         envs={
                             "GITHUB_PAT": os.getenv("GITHUB_PAT", ""),
-                            # Use dummy API key - router will handle actual auth
-                            "ANTHROPIC_API_KEY": "sk-ant-router",
-                            # Point Claude to use the router
-                            "ANTHROPIC_BASE_URL": "http://localhost:3456",
+                            "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
                             # Disable telemetry and warnings
                             "DISABLE_TELEMETRY": "true",
                             "DISABLE_COST_WARNINGS": "true",
@@ -378,36 +227,6 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
 
                     log("Chat", f"✅ MCP configured with tools: {list(mcp_config.keys())}")
                     yield f"data: {json.dumps({'type': 'mcp_configured', 'mcp_enabled': list(mcp_config.keys()), 'mcp_gateway_url': mcp_url})}\n\n"
-
-                # Setup Claude Code Router to use Groq
-                event_queue = asyncio.Queue()
-
-                # Setup router in background task
-                router_task = asyncio.create_task(setup_claude_code_router(sandbox, event_queue))
-
-                # Stream events while router is setting up
-                while not router_task.done():
-                    try:
-                        # Wait for events with short timeout
-                        event = await asyncio.wait_for(event_queue.get(), timeout=0.5)
-                        yield f"data: {json.dumps(event)}\n\n"
-                    except asyncio.TimeoutError:
-                        # No event yet, continue waiting
-                        continue
-
-                # Drain any remaining events
-                while not event_queue.empty():
-                    event = await event_queue.get()
-                    yield f"data: {json.dumps(event)}\n\n"
-
-                # Wait for router setup to complete and get status
-                try:
-                    router_status = await router_task
-                    yield f"data: {json.dumps({'type': 'router_ready', 'router_status': router_status})}\n\n"
-                except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'error': f'Router setup failed: {str(e)}'})}\n\n"
-                    # Don't raise - continue without router
-                    router_status = None
             else:
                 log("Chat", f"🔄 Reconnecting to existing session: {session}")
                 sandbox = await AsyncSandbox.connect(sandbox_id=session_sandbox_map[session])
@@ -431,10 +250,10 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                 yield f"data: {json.dumps({'type': 'ports', 'exposed_urls': exposed_ports})}\n\n"
 
             # Execute Claude Code with REALTIME streaming using stream-json
-            log("Chat", "🤖 Preparing to execute Claude Code via Router")
+            log("Chat", "🤖 Preparing to execute Claude Code")
             yield f"data: {json.dumps({'type': 'status', 'status': 'executing'})}\n\n"
 
-            cmd = "ccr code"
+            cmd = "claude"
 
             # Combine system prompt and user prompt to avoid shell escaping issues
             # This ensures all context is passed via stdin without command-line complexity
@@ -544,12 +363,8 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                 log("Chat", f"⚠️  Claude help failed: {simple_test.stderr[:200]}")
 
             # Check environment variables
-            env_check = await sandbox.commands.run("env | grep -E '(ANTHROPIC|GROQ)' | head -5")
+            env_check = await sandbox.commands.run("env | grep ANTHROPIC | head -5")
             log("Chat", f"🔑 Environment variables: {env_check.stdout[:200]}")
-
-            # Verify router is accessible from within sandbox
-            router_test = await sandbox.commands.run("curl -s http://localhost:3456/health || echo 'Router not accessible'", timeout=5000)
-            log("Chat", f"🔍 Router accessibility test: {router_test.stdout[:200]}")
 
             # Build full command - simpler without system prompt in args
             full_command = f"cd /home/user/template && cat /home/user/claude_prompt.txt | {cmd} {' '.join(claude_args)}"
@@ -623,11 +438,6 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
             if session is None and get_mcp_config():
                 completion_data['mcp_enabled'] = list(get_mcp_config().keys())
                 completion_data['mcp_gateway_url'] = sandbox.get_mcp_url()
-
-            # Add router status if available
-            if router_status:
-                completion_data['router_status'] = router_status
-                completion_data['using_groq'] = router_status.get('started', False)
 
             log("Chat", f"📦 Completion data: {completion_data}")
             log_separator()
