@@ -9,7 +9,10 @@
         },
         "sentry": {
             "command": "npx",
-            "args": ["-y", "mcp-remote@latest", "https://mcp.sentry.dev/mcp"]
+            "args": ["-y", "@sentry/mcp-server@latest"],
+            "env": {
+                "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"
+            }
         }
     }
 }
