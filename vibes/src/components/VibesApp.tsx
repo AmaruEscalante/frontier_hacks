@@ -10,6 +10,13 @@ Your capabilities:
 - You can see paper mockups, sketches, whiteboards, or screen shares that users show you
 - You can build complete web applications using a two-step process
 - You can make iterative changes to existing apps using sendMessage
+- You can debug and trace errors using Sentry integration
+
+SENTRY INTEGRATION:
+- All apps built from the base template have Sentry automatically integrated
+- When errors occur in production, they are automatically reported to Sentry
+- You can investigate issues when users mention bugs, errors, or unexpected behavior
+- Use traceSentryIssue() to have the Coder Agent analyze error traces in real-time
 
 When you can see the user's video:
 - Acknowledge what you see in the video feed
@@ -54,6 +61,13 @@ Function usage:
   - Use when user says things like "push to GitHub", "save to GitHub", "commit this", "deploy to GitHub"
   - This will commit and push the current code to their GitHub repository
   - The app must be built first before calling this
+
+- traceSentryIssue(issueId?): Call this when user reports bugs or wants to investigate errors
+  - Use when user mentions errors, bugs, crashes, or unexpected behavior
+  - Optional issueId parameter - if not provided, will investigate latest issues
+  - This triggers the Coder Agent to pull real-time data from Sentry and analyze the issue
+  - The agent will review execution flows, identify root causes, and suggest fixes
+  - Examples: "there's a bug", "the app crashed", "investigate this error", "debug the login issue"
 
 Response style:
 - Be direct and concise
@@ -227,6 +241,54 @@ const VibesApp: React.FC = () => {
               },
             }],
           });
+        } else if (fc.name === 'traceSentryIssue') {
+          const issueId = fc.args?.issueId || '';
+          console.log('='.repeat(80));
+          console.log('[VibesApp] 🐛 traceSentryIssue called - User wants to investigate a Sentry issue!');
+          console.log('[VibesApp] Issue ID:', issueId || 'Not specified (will investigate latest)');
+          console.log('[VibesApp] Current session ID:', currentSessionId);
+          console.log('='.repeat(80));
+
+          if (!currentSessionId) {
+            console.error('[VibesApp] ❌ No active session found');
+            client.sendToolResponse({
+              functionResponses: [{
+                id: fc.id,
+                name: 'traceSentryIssue',
+                response: {
+                  status: 'error',
+                  message: 'No active build found. Please build an app first before investigating issues.',
+                },
+              }],
+            });
+            return;
+          }
+
+          // Trigger build status to show the LovableBuilder UI
+          setBuildStatus('building');
+
+          // Format the Sentry investigation request for the Coder Agent
+          // This matches the format expected by the backend's SENTRY TRACE INVESTIGATION section
+          const investigationPrompt = issueId
+            ? `Investigate the following Sentry trace: ${issueId}\n\nReview the execution flow within this trace. Compare the observed execution flow against any implementation plans in the docs directory. Point out any discrepancies, missing steps, unexpected behaviors, or errors. Provide a detailed analysis of the root cause and suggest fixes.`
+            : `Investigate the latest Sentry issues for this application.\n\nReview recent errors and their execution flows. Identify the root causes and suggest fixes for the most critical issues.`;
+
+          setBuildRequest({
+            description: investigationPrompt,
+            callId: fc.id,
+          });
+
+          // Send response back to Gemini
+          client.sendToolResponse({
+            functionResponses: [{
+              id: fc.id,
+              name: 'traceSentryIssue',
+              response: {
+                status: 'success',
+                message: 'Investigating Sentry issue. The Coder Agent will analyze the error trace and provide findings...',
+              },
+            }],
+          });
         }
       }
     };
@@ -349,6 +411,19 @@ const VibesApp: React.FC = () => {
               parameters: {
                 type: 'object',
                 properties: {},
+              },
+            },
+            {
+              name: 'traceSentryIssue',
+              description: 'Investigate and debug a Sentry issue/error. Use this when user reports bugs, errors, crashes, or unexpected behavior. The Coder Agent will pull real-time data from Sentry and analyze the issue.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  issueId: {
+                    type: 'string',
+                    description: 'Optional Sentry issue ID or trace ID to investigate. If not provided, will investigate the latest issues.',
+                  },
+                },
               },
             },
           ],

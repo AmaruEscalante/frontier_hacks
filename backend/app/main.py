@@ -45,6 +45,7 @@ async def lifespan(app: FastAPI):
         "ANTHROPIC_API_KEY": bool(os.getenv("ANTHROPIC_API_KEY")),
         "E2B_API_KEY": bool(os.getenv("E2B_API_KEY")),
         "GITHUB_PAT": bool(os.getenv("GITHUB_PAT")),
+        "SENTRY_AUTH_TOKEN": bool(os.getenv("SENTRY_AUTH_TOKEN")),
     }
 
     log("Server", "🔑 API Keys configured:")
@@ -82,7 +83,24 @@ system_prompt = """
 WORKING DIRECTORY:
 The template repository from https://github.com/AmaruEscalante/template has been automatically cloned to `/home/user/template` with all dependencies installed via `pnpm install`. This is your default working directory for this session.
 
-GitHub PAT is already set in the environment GITHUB_PAT.
+MCP SERVER ACCESS:
+You have access to the following MCP (Model Context Protocol) servers:
+
+1. **GitHub MCP** (githubOfficial)
+   - GitHub PAT is already set in the environment GITHUB_PAT
+   - You have very permissive access to GitHub via the MCP server
+   - You can create, read, and modify repositories
+   - When requested to upload code, ALWAYS use the MCP GitHub tool
+   - When pushing code, ideally try to push it to a new repo
+
+2. **Sentry MCP** (sentry)
+   - Sentry Auth Token is already configured in the environment
+   - You can ONLY access Sentry through the MCP server - no direct API access
+   - Available capabilities via MCP:
+     * Retrieve and analyze issues from Sentry.io in real-time
+     * Inspect error reports and stacktraces
+     * Access debugging information from Sentry projects
+   - Use Sentry MCP tools to pull live issue data when debugging or investigating errors
 
 IMPORTANT INSTRUCTIONS:
 1. Your FIRST task is to start the dev server in the background. Do this BEFORE making any code changes:
@@ -102,8 +120,27 @@ CRITICAL TOOL RESTRICTIONS:
 - For file listing, use the Bash tool with 'ls' command or the Glob tool instead
 - Only use tools that are explicitly available in your toolset
 
-whenever you're requested to upload code, so you always use the MCP GitHub tool you have available.
-So you have very permissive access. You can create the lead modify repos. When requested to push code, ideally try to push it to a new repo.
+SENTRY TRACE INVESTIGATION:
+When asked to investigate a Sentry trace, follow this workflow:
+
+1. Use the Sentry MCP tools to retrieve the trace and issue details
+2. Review the execution flow within the trace
+3. If an implementation plan exists (e.g., @/docs/user_profile_plan.md or similar), compare the observed execution flow against the plan
+4. Identify and document:
+   - Any discrepancies between planned vs actual execution
+   - Missing steps in the implementation
+   - Unexpected behaviors or side effects
+   - Errors and their root causes
+5. Update the relevant plan document with a detailed summary of findings
+6. Provide additional context and deep analysis for any suggested changes
+
+Example investigation prompt:
+"Investigate the following trace: <trace_id>
+Review the execution flow within this trace. Compare the observed execution flow
+against the implementation plan in @/docs/user_profile_plan.md.
+Point out any discrepancies, missing steps, unexpected behaviors, or errors.
+Update @/docs/user_profile_plan.md with a detailed summary of your findings.
+Provide additional context and deep analysis for any suggested changes."
 """
 
 sandbox_template = os.getenv("E2B_SANDBOX_TEMPLATE", "claude-code-dev")
@@ -120,11 +157,18 @@ def get_mcp_config() -> Dict[str, Any]:
     """
     mcp_config = {}
 
-    # Context7 MCP
+    # GitHub MCP
     if os.getenv("GITHUB_PAT"):
         mcp_config["githubOfficial"] = {
             "personalAccessToken": os.getenv("GITHUB_PAT"),
         }
+
+    # Sentry MCP
+    if os.getenv("SENTRY_AUTH_TOKEN"):
+        mcp_config["sentry"] = {
+            "authToken": os.getenv("SENTRY_AUTH_TOKEN"),
+        }
+
     return mcp_config
 
 
@@ -170,7 +214,7 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
                         envs={
                             "GITHUB_PAT": os.getenv("GITHUB_PAT", ""),
                             "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
-                            # Disable telemetry and warnings
+                            "SENTRY_AUTH_TOKEN": os.getenv("SENTRY_AUTH_TOKEN", ""),
                             "DISABLE_TELEMETRY": "true",
                             "DISABLE_COST_WARNINGS": "true",
                         },
