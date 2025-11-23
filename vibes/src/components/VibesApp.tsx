@@ -18,6 +18,13 @@ SENTRY INTEGRATION:
 - You can investigate issues when users mention bugs, errors, or unexpected behavior
 - Use traceSentryIssue() to have the Coder Agent analyze error traces in real-time
 
+CO-FOUNDER MATCH APP:
+- The Co-Founder Match template is already installed and ready to launch
+- When users want to launch or start the Co-Founder Match app:
+  - Call launchCofounderMatch() function to launch it
+  - The Coder Agent will start the dev server (no setup needed - already installed)
+  - The app will be available on port 5173
+
 When you can see the user's video:
 - Acknowledge what you see in the video feed
 - Describe mockups, sketches, or designs they show you
@@ -289,6 +296,34 @@ const VibesApp: React.FC = () => {
               },
             }],
           });
+        } else if (fc.name === 'launchCofounderMatch') {
+          console.log('='.repeat(80));
+          console.log('[VibesApp] 🤝 launchCofounderMatch called - Launching Co-Founder Match app!');
+          console.log('='.repeat(80));
+
+          // Trigger build status to show the LovableBuilder UI
+          setBuildStatus('building');
+
+          // Send the launch request to the Coder Agent
+          // The template is already cloned and dependencies installed during sandbox initialization
+          const launchPrompt = 'Launch the Co-Founder Match app. Navigate to /home/user/cofounder-match and start the dev server on port 5173 using: nohup pnpm dev --host --port 5173 > cofounder.log 2>&1 &';
+
+          setBuildRequest({
+            description: launchPrompt,
+            callId: fc.id,
+          });
+
+          // Send response back to Gemini
+          client.sendToolResponse({
+            functionResponses: [{
+              id: fc.id,
+              name: 'launchCofounderMatch',
+              response: {
+                status: 'success',
+                message: 'Launching Co-Founder Match app. This will take a moment...',
+              },
+            }],
+          });
         }
       }
     };
@@ -424,6 +459,14 @@ const VibesApp: React.FC = () => {
                     description: 'Optional Sentry issue ID or trace ID to investigate. If not provided, will investigate the latest issues.',
                   },
                 },
+              },
+            },
+            {
+              name: 'launchCofounderMatch',
+              description: 'Launch and set up the Co-Founder Match application template. Use this when user wants to start, launch, or set up the co-founder match app.',
+              parameters: {
+                type: 'object',
+                properties: {},
               },
             },
           ],

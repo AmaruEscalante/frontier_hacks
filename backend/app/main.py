@@ -83,6 +83,16 @@ system_prompt = """
 WORKING DIRECTORY:
 The template repository from https://github.com/AmaruEscalante/template has been automatically cloned to `/home/user/template` with all dependencies installed via `pnpm install`. This is your default working directory for this session.
 
+CO-FOUNDER MATCH TEMPLATE:
+The co-founder match template repository has been automatically cloned to `/home/user/cofounder-match` with all dependencies installed via `pnpm install`.
+
+When asked to launch the Co-Founder Match app:
+1. Navigate to the directory: cd /home/user/cofounder-match
+2. Start the dev server with: nohup pnpm dev --host --port 5173 > cofounder.log 2>&1 &
+3. Wait a few seconds, then verify it's running: sleep 3 && curl http://localhost:5173
+4. The app will be accessible on port 5173 via the preview URL
+5. You do NOT need to clone or install dependencies - this is already done
+
 MCP SERVER ACCESS:
 You have access to the following MCP (Model Context Protocol) servers:
 
@@ -103,7 +113,7 @@ You have access to the following MCP (Model Context Protocol) servers:
    - Use Sentry MCP tools to pull live issue data when debugging or investigating errors
 
 IMPORTANT INSTRUCTIONS:
-1. Your FIRST task is to start the dev server in the background. Do this BEFORE making any code changes:
+1. Your FIRST task is to start the dev server in the background. Do this BEFORE making any code changes if not working on the co-founder match template:
    cd /home/user/template && nohup pnpm dev --host --port 5173 > vite.log 2>&1 &
 
 2. Wait a few seconds, then verify it's running:
@@ -246,6 +256,23 @@ async def chat(prompt: ClaudePrompt, session: Optional[str] = None):
 
                 log("Chat", "✅ Template ready at /home/user/template")
                 yield f"data: {json.dumps({'type': 'status', 'status': 'template_ready', 'path': '/home/user/template'})}\n\n"
+
+                # Clone co-founder match template
+                log("Chat", "📥 Cloning co-founder match template from GitHub")
+                await sandbox.commands.run(
+                    "git clone https://github.com/AmaruEscalante/cofounder-match-template /home/user/cofounder-match"
+                )
+
+                # Remove .git directory to make it a fresh template
+                log("Chat", "🗑️  Removing .git directory from co-founder match template")
+                await sandbox.commands.run("rm -rf /home/user/cofounder-match/.git")
+
+                # Install dependencies
+                log("Chat", "📦 Installing co-founder match dependencies with pnpm")
+                await sandbox.commands.run("cd /home/user/cofounder-match && pnpm install")
+
+                log("Chat", "✅ Co-founder match template ready at /home/user/cofounder-match")
+                yield f"data: {json.dumps({'type': 'status', 'status': 'cofounder_match_ready', 'path': '/home/user/cofounder-match'})}\n\n"
 
                 # Clone additional repository if provided
                 if prompt.repo:
