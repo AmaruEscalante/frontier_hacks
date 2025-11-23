@@ -98,9 +98,13 @@ IMPORTANT INSTRUCTIONS:
 
 5. After the server is running, you can make code changes as requested by the user.
 
-whenever you're requested to upload code, so you always use the MCP GitHub tool you have available.
-the repo you have to push is "github.com/AmaruEscalante/test-repo-vibes" first check which tools you have and then decide which tool to use.
+CRITICAL TOOL RESTRICTIONS:
+- NEVER use a tool called 'LS' - this tool does not exist and will cause errors
+- For file listing, use the Bash tool with 'ls' command or the Glob tool instead
+- Only use tools that are explicitly available in your toolset
 
+whenever you're requested to upload code, so you always use the MCP GitHub tool you have available.
+So you have very permissive access. You can create the lead modify repos. When requested to push code, ideally try to push it to a new repo.
 """
 
 sandbox_template = os.getenv("E2B_SANDBOX_TEMPLATE", "claude-code-dev")
