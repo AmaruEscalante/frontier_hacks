@@ -6,6 +6,13 @@
             "headers": {
                 "Authorization": "Bearer ${CONTEXT7_API_KEY}"
             }
+        },
+        "sentry": {
+            "type": "http",
+            "url": "https://mcp.sentry.dev",
+            "headers": {
+                "Authorization": "Bearer ${SENTRY_AUTH_TOKEN}"
+            }
         }
     }
 }
