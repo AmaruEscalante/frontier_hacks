@@ -11,12 +11,23 @@ Your capabilities:
 - You can build complete web applications using a two-step process
 - You can make iterative changes to existing apps using sendMessage
 - You can debug and trace errors using Sentry integration
+- You act as a MIDDLEWARE/BRIDGE between the user and Claude Code (Software Engineering Agent)
+
+MIDDLEWARE MODE - Bridging User and Claude Code:
+- You can communicate directly with Claude Code for ANY debugging, investigation, or code analysis tasks
+- You DON'T need an active build session to send messages to Claude Code
+- Use debugWithClaudeCode() to send ANY debugging or investigation request directly to the SWE agent
+- This is independent of the app building workflow - you can debug, investigate, or analyze code at any time
+- Claude Code has FULL ACCESS to Sentry traces, error data, and execution flows
+- When debugging, Claude Code can pull Sentry traces to analyze error patterns and root causes
+- Examples: "investigate this error", "analyze this code pattern", "debug why X is happening", "review this implementation", "trace this bug with Sentry data"
 
 SENTRY INTEGRATION:
 - All apps built from the base template have Sentry automatically integrated
 - When errors occur in production, they are automatically reported to Sentry
 - You can investigate issues when users mention bugs, errors, or unexpected behavior
 - Use traceSentryIssue() to have the Coder Agent analyze error traces in real-time
+- Sentry debugging works INDEPENDENTLY - no active build required
 
 CO-FOUNDER MATCH APP:
 - The Co-Founder Match template is already installed and ready to launch
@@ -75,6 +86,15 @@ Function usage:
   - This triggers the Coder Agent to pull real-time data from Sentry and analyze the issue
   - The agent will review execution flows, identify root causes, and suggest fixes
   - Examples: "there's a bug", "the app crashed", "investigate this error", "debug the login issue"
+  - NO active build required - works independently
+
+- debugWithClaudeCode(request): Call this to send ANY debugging or investigation request to Claude Code
+  - Use for general debugging, code analysis, investigation tasks
+  - Works INDEPENDENTLY of the build workflow - no active build required
+  - The SWE agent (Claude Code) has FULL ACCESS to Sentry traces and error data
+  - Claude Code will pull Sentry traces automatically when investigating bugs/errors
+  - Include instructions to use Sentry data when debugging errors or unexpected behavior
+  - Examples: "analyze this code", "investigate why X happens using Sentry traces", "review this implementation", "debug this error with Sentry data"
 
 Response style:
 - Be direct and concise
@@ -253,24 +273,10 @@ const VibesApp: React.FC = () => {
           console.log('='.repeat(80));
           console.log('[VibesApp] 🐛 traceSentryIssue called - User wants to investigate a Sentry issue!');
           console.log('[VibesApp] Issue ID:', issueId || 'Not specified (will investigate latest)');
-          console.log('[VibesApp] Current session ID:', currentSessionId);
+          console.log('[VibesApp] NO SESSION REQUIRED - Working independently');
           console.log('='.repeat(80));
 
-          if (!currentSessionId) {
-            console.error('[VibesApp] ❌ No active session found');
-            client.sendToolResponse({
-              functionResponses: [{
-                id: fc.id,
-                name: 'traceSentryIssue',
-                response: {
-                  status: 'error',
-                  message: 'No active build found. Please build an app first before investigating issues.',
-                },
-              }],
-            });
-            return;
-          }
-
+          // NO SESSION ID CHECK - Sentry debugging works independently
           // Trigger build status to show the LovableBuilder UI
           setBuildStatus('building');
 
@@ -293,6 +299,37 @@ const VibesApp: React.FC = () => {
               response: {
                 status: 'success',
                 message: 'Investigating Sentry issue. The Coder Agent will analyze the error trace and provide findings...',
+              },
+            }],
+          });
+        } else if (fc.name === 'debugWithClaudeCode') {
+          const request = fc.args?.request || '';
+          console.log('='.repeat(80));
+          console.log('[VibesApp] 🔍 debugWithClaudeCode called - Bridging user to Claude Code SWE!');
+          console.log('[VibesApp] Debug Request:', request);
+          console.log('[VibesApp] MIDDLEWARE MODE - No session required');
+          console.log('[VibesApp] Claude Code has access to Sentry traces for error analysis');
+          console.log('='.repeat(80));
+
+          // NO SESSION ID CHECK - This is a direct bridge to Claude Code
+          // Trigger build status to show the LovableBuilder UI
+          setBuildStatus('building');
+
+          // Pass the debug request directly to Claude Code
+          // Claude Code will automatically access Sentry traces when investigating bugs
+          setBuildRequest({
+            description: request,
+            callId: fc.id,
+          });
+
+          // Send response back to Gemini
+          client.sendToolResponse({
+            functionResponses: [{
+              id: fc.id,
+              name: 'debugWithClaudeCode',
+              response: {
+                status: 'success',
+                message: 'Sending debug request to Claude Code. The SWE agent will investigate with full access to Sentry traces and error data...',
               },
             }],
           });
@@ -450,7 +487,7 @@ const VibesApp: React.FC = () => {
             },
             {
               name: 'traceSentryIssue',
-              description: 'Investigate and debug a Sentry issue/error. Use this when user reports bugs, errors, crashes, or unexpected behavior. The Coder Agent will pull real-time data from Sentry and analyze the issue.',
+              description: 'Investigate and debug a Sentry issue/error. Use this when user reports bugs, errors, crashes, or unexpected behavior. The Coder Agent will pull real-time data from Sentry and analyze the issue. NO active build required.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -459,6 +496,20 @@ const VibesApp: React.FC = () => {
                     description: 'Optional Sentry issue ID or trace ID to investigate. If not provided, will investigate the latest issues.',
                   },
                 },
+              },
+            },
+            {
+              name: 'debugWithClaudeCode',
+              description: 'Send a debugging or investigation request directly to Claude Code (SWE agent). Use this for ANY debugging, code analysis, or investigation tasks. Works INDEPENDENTLY - no active build required. Acts as a middleware between user and the SWE agent. Claude Code has FULL ACCESS to Sentry traces and will automatically pull error data when investigating bugs.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  request: {
+                    type: 'string',
+                    description: 'The debugging or investigation request to send to Claude Code. Be specific about what needs to be analyzed or debugged. For errors/bugs, explicitly instruct to pull and analyze Sentry traces. Example: "Investigate the login error - pull Sentry traces and analyze the root cause"',
+                  },
+                },
+                required: ['request'],
               },
             },
             {
