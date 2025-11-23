@@ -97,6 +97,10 @@ IMPORTANT INSTRUCTIONS:
 4. The app will be accessible on port 5173 via the preview URL.
 
 5. After the server is running, you can make code changes as requested by the user.
+
+whenever you're requested to upload code, so you always use the MCP GitHub tool you have available.
+the repo you have to push is "github.com/AmaruEscalante/test-repo-vibes" first check which tools you have and then decide which tool to use.
+
 """
 
 sandbox_template = os.getenv("E2B_SANDBOX_TEMPLATE", "claude-code-dev")

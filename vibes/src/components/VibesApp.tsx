@@ -50,6 +50,11 @@ Function usage:
   - The message should be a clear instruction for what to change
   - NO confirmation needed - changes happen immediately
 
+- pushToGithub(): Call this when user wants to save/commit/push their code to GitHub
+  - Use when user says things like "push to GitHub", "save to GitHub", "commit this", "deploy to GitHub"
+  - This will commit and push the current code to their GitHub repository
+  - The app must be built first before calling this
+
 Response style:
 - Be direct and concise
 - Get to the point quickly
@@ -183,6 +188,45 @@ const VibesApp: React.FC = () => {
               },
             }],
           });
+        } else if (fc.name === 'pushToGithub') {
+          console.log('='.repeat(80));
+          console.log('[VibesApp] 🚀 pushToGithub called - User wants to commit and push to GitHub!');
+          console.log('[VibesApp] Current session ID:', currentSessionId);
+          console.log('='.repeat(80));
+
+          if (!currentSessionId) {
+            console.error('[VibesApp] ❌ No active session found');
+            client.sendToolResponse({
+              functionResponses: [{
+                id: fc.id,
+                name: 'pushToGithub',
+                response: {
+                  status: 'error',
+                  message: 'No active build found. Please build an app first before pushing to GitHub.',
+                },
+              }],
+            });
+            return;
+          }
+
+          // Trigger a special message to the LovableBuilder to handle git operations
+          setBuildStatus('building');
+          setBuildRequest({
+            description: '__PUSH_TO_GITHUB__', // Special marker for git push operation
+            callId: fc.id,
+          });
+
+          // Send response back to Gemini
+          client.sendToolResponse({
+            functionResponses: [{
+              id: fc.id,
+              name: 'pushToGithub',
+              response: {
+                status: 'success',
+                message: 'Committing and pushing code to GitHub. This may take a moment...',
+              },
+            }],
+          });
         }
       }
     };
@@ -297,6 +341,14 @@ const VibesApp: React.FC = () => {
                   },
                 },
                 required: ['message'],
+              },
+            },
+            {
+              name: 'pushToGithub',
+              description: 'Commit and push the current code to GitHub. Use this when user wants to save, commit, or deploy their code to GitHub. The app must be built first.',
+              parameters: {
+                type: 'object',
+                properties: {},
               },
             },
           ],
