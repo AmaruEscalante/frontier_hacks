@@ -558,7 +558,7 @@ const LovableBuilder: React.FC<LovableBuilderProps> = ({
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   style={{ opacity: isPreviewLoading ? 0.3 : 1 }}
                   onLoad={() => {
-                    console.log('[LovableBuilder] 📦 Preview loaded successflly');
+                    console.log('[LovableBuilder] 📦 Preview loaded successfully');
                     // Keep loading state for a bit longer to ensure app is ready
                     setTimeout(() => {
                       if (refreshIntervalRef.current) {
